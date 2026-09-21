@@ -1,0 +1,28 @@
+name: Suggest something
+description: A rule, a measurement or a command printprep should have
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [ROADMAP.md](https://github.com/daveatpressac-lab/printprep/blob/main/ROADMAP.md)
+        first - it may already be there, in which case a comment saying you want it is useful.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What goes wrong today, in terms of artwork and print files rather than API shape?
+        This library is a set of rules, and each one exists because something printed badly.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do instead at the moment

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/daveatpressac-lab/printprep/security/advisories/new
+    about: Please report vulnerabilities privately rather than in a public issue.
+  - name: How do I use this?
+    url: https://github.com/daveatpressac-lab/printprep/blob/main/README.md
+    about: The README covers each rule and why it is there. Questions are welcome as issues too.

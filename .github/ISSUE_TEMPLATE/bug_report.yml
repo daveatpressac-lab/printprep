@@ -1,0 +1,52 @@
+name: Something went wrong
+description: printprep produced the wrong result, or failed on artwork it should handle
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You do not need to share artwork you would rather keep private. A description of the
+        artwork, or a few lines of code that draw something similar, is genuinely enough.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, and what came out?
+      placeholder: |
+        printprep key scan.png cut.png --grain 24
+        The whole image came back transparent.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: artwork
+    attributes:
+      label: The artwork
+      description: >
+        What is the background - paper, a flat colour, a gradient? Does the background colour
+        also appear inside the design? Roughly what size, and where did the file come from?
+        If you can attach a small image, or code that draws one in the style of tests/synth.py,
+        even better.
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements, if you have them
+      description: >
+        The output of `printprep grain <your file>` is the single most useful thing here, and
+        `printprep qc` or `printprep halo` if the problem is downstream.
+      render: json
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `printprep --version`, plus your Python version and OS.
+      placeholder: "printprep 0.1.0, Python 3.12.3, Ubuntu 24.04"
+    validations:
+      required: true
