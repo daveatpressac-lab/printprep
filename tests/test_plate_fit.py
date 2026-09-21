@@ -59,9 +59,9 @@ class TestFit(unittest.TestCase):
         r = fit_to_canvas(self._art(100, 120), canvas=(900, 1080))
         path = os.path.join(tempfile.mkdtemp(), "m.png")
         save_master(r.image, path)
-        back = Image.open(path)
-        self.assertEqual(back.mode, "RGBA")
-        self.assertAlmostEqual(back.info["dpi"][0], 300, delta=0.5)
+        with Image.open(path) as back:
+            self.assertEqual(back.mode, "RGBA")
+            self.assertAlmostEqual(back.info["dpi"][0], 300, delta=0.5)
 
 
 if __name__ == "__main__":
