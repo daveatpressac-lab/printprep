@@ -109,3 +109,34 @@ def as_16bit_grey(image):
     """
     grey = np.asarray(image.convert("L")).astype(np.uint16) * 257
     return Image.fromarray(grey)
+
+
+def ring(size=(200, 200), gap=False):
+    """A filled ring. Its middle is ground colour: enclosed when closed, reachable when gapped.
+
+    The gapped version is the case connectivity is supposed to get RIGHT by removing the middle -
+    ground that a hairline opening connects to the outside world really is background.
+    """
+    def draw(d, s):
+        d.ellipse([40 * s, 40 * s, 160 * s, 160 * s], fill=INK)
+        d.ellipse([70 * s, 70 * s, 130 * s, 130 * s], fill=CREAM)
+        if gap:
+            d.rectangle([95 * s, 30 * s, 105 * s, 100 * s], fill=CREAM)
+    return _aa(draw, size, CREAM)
+
+
+def pale_on_cream(size=(300, 300), grain=3.0):
+    """A pale ink barely distinguishable from the paper - the hardest case for any keyer."""
+    def draw(d, s):
+        d.ellipse([40 * s, 40 * s, 260 * s, 260 * s], fill=(228, 214, 188))
+    return with_grain(_aa(draw, size, CREAM), grain)
+
+
+def strip(size, grain=0.0):
+    """A block of ink on ground, at whatever extreme aspect ratio is asked for."""
+    w, h = size
+
+    def draw(d, s):
+        d.rectangle([w * s // 4, h * s // 4, w * s * 3 // 4, h * s * 3 // 4], fill=INK)
+    img = _aa(draw, size, CREAM)
+    return with_grain(img, grain) if grain else img

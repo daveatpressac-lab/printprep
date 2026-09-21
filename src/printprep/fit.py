@@ -3,7 +3,17 @@
 Stretching is the quiet failure. A helper that resizes to a target width AND height will force a
 tall design into a square canvas, and if every design you test happens to be square it can go
 unnoticed for a long time. Here there is exactly one scale factor, chosen by whichever axis runs
-out of room first, and the aspect drift is reported so a test can pin it at zero.
+out of room first, and the aspect drift is reported so a test can pin it near zero.
+
+`aspect_drift` IS A FRACTION, NOT A DIFFERENCE OF RATIOS
+--------------------------------------------------------
+Rounding the placed size to whole pixels distorts the artwork a little, and how much is only
+meaningful relative to the shape. Subtracting one aspect ratio from another reports the same
+distortion very differently depending on which way up the artwork is, and it reports it wrongly in
+both directions: a 4000 x 20 strip rounded to 0.7% distortion scored 1.43 and looked catastrophic,
+while a 20 x 4000 strip rounded to 1.5% distortion scored 0.000075 and looked perfect. So the
+drift is the fractional change in the aspect ratio, and a single threshold means the same thing
+for every shape.
 """
 from __future__ import annotations
 
@@ -23,6 +33,7 @@ class FitResult(NamedTuple):
     scale: float
     placed: tuple
     offset: tuple
+    #: Fractional change in the aspect ratio: 0.01 means one per cent distorted.
     aspect_drift: float
 
 
@@ -30,7 +41,9 @@ def fit_to_canvas(image, canvas=DEFAULT_CANVAS, margin: float = 0.94,
                   crop_to_art: bool = True, alpha_threshold: float = 8) -> FitResult:
     """Crop to the visible artwork, scale once to fit `margin` of the canvas, centre it.
 
-    `margin` keeps the artwork off the very edge of the print area.
+    `margin` keeps the artwork off the very edge of the print area. The returned `aspect_drift` is
+    the fraction by which the aspect ratio changed, so `< 0.005` means under half a per cent
+    whatever shape the artwork is.
     """
     cw, ch = canvas
     if cw < 1 or ch < 1:
@@ -52,7 +65,7 @@ def fit_to_canvas(image, canvas=DEFAULT_CANVAS, margin: float = 0.94,
     out = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
     off = ((cw - w) // 2, (ch - h) // 2)
     out.alpha_composite(placed, off)
-    drift = abs(art.width / art.height - w / h)
+    drift = abs((w / h) / (art.width / art.height) - 1.0)
     return FitResult(out, s, (w, h), off, drift)
 
 

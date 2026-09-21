@@ -94,11 +94,16 @@ def measure_grain(image, ground=None, tolerance: float = 30) -> dict:
     _, outside = _outside(d, tolerance)
     core = ndimage.binary_erosion(outside, np.ones((9, 9)))
     vals = d[core] if core.any() else d[outside]
+    out = {"ground": [round(float(v), 1) for v in g], "pixels": int(vals.size),
+           "p50": None, "p99": None, "p99_9": None, "max": None}
     if not vals.size:
-        return {"ground": [round(float(v), 1) for v in g], "pixels": 0}
-    return {"ground": [round(float(v), 1) for v in g], "pixels": int(vals.size),
-            "p50": float(np.percentile(vals, 50)), "p99": float(np.percentile(vals, 99)),
-            "p99_9": float(np.percentile(vals, 99.9)), "max": float(vals.max())}
+        # No ground reached the border, which nearly always means the `ground` colour passed in is
+        # not this image's. The keys stay, empty, so a caller reading p99_9 gets None here rather
+        # than a KeyError three steps later.
+        return out
+    out.update(p50=float(np.percentile(vals, 50)), p99=float(np.percentile(vals, 99)),
+               p99_9=float(np.percentile(vals, 99.9)), max=float(vals.max()))
+    return out
 
 
 def key_ground(image, ground=None, tolerance: float = 30, grain: float = 24,
