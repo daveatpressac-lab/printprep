@@ -34,7 +34,7 @@ from typing import NamedTuple
 import numpy as np
 from scipy import ndimage
 
-from ._img import to_image, to_rgb_array
+from ._img import has_alpha, to_image, to_rgb_array, to_rgba_array
 
 
 class KeyResult(NamedTuple):
@@ -64,6 +64,21 @@ def _outside(d, tolerance):
     edge = np.concatenate([lbl[0], lbl[-1], lbl[:, 0], lbl[:, -1]])
     border = np.unique(edge[edge > 0])
     return near, np.isin(lbl, border)
+
+
+def _refuse_artwork_that_is_already_cut_out(image) -> None:
+    """key_ground reads colour only. Under a transparent pixel there is no colour to read - it is
+    whatever happened to be left in the RGB channels, usually black or stale ground - so keying an
+    already-cut image measures paint that was never there. Refuse it rather than return rubbish."""
+    if not has_alpha(image):
+        return
+    clear_pct = float((to_rgba_array(image)[..., 3] < 128).mean() * 100)
+    if clear_pct > 1.0:
+        raise ValueError(
+            f"this artwork is already cut out ({clear_pct:.1f}% of it is transparent). key_ground "
+            f"reads colour, and the colour under a transparent pixel is undefined, so the result "
+            f"would be meaningless. Composite it onto its ground first, or cut it with "
+            f"plate.cut_plate(mask=...).")
 
 
 def measure_grain(image, ground=None, tolerance: float = 30) -> dict:
@@ -98,8 +113,16 @@ def key_ground(image, ground=None, tolerance: float = 30, grain: float = 24,
     edge_width    px band along the outside edge where partial coverage is estimated
     min_coverage  smallest coverage the unmultiply divides by, so faint pixels stay stable
     """
+    if tolerance <= 0:
+        raise ValueError(f"tolerance ({tolerance}) must be above zero")
+    if grain < 0:
+        raise ValueError(f"grain ({grain}) cannot be negative")
     if not grain < tolerance:
         raise ValueError(f"grain ({grain}) must be below tolerance ({tolerance})")
+    if window < 1 or edge_width < 1:
+        raise ValueError(f"window ({window}) and edge_width ({edge_width}) are pixel counts and "
+                         f"must be at least 1")
+    _refuse_artwork_that_is_already_cut_out(image)
     a = to_rgb_array(image)
     g = estimate_ground(a) if ground is None else np.asarray(ground, np.float32)
     d = np.abs(a - g).max(axis=-1)

@@ -102,11 +102,11 @@ def halo(image, ground=DARK_GROUND, ring: int = 3) -> dict:
             "band_p95_lum": round(float(np.percentile(lum[band], 95)), 1)}
 
 
-def _prepare(im, long_edge):
+def _prepare(im, long_edge, what="image"):
     a = to_rgba_array(im)
     box = alpha_bbox(a[..., 3])
     if box is None:
-        raise ValueError("image has no visible artwork")
+        raise ValueError(f"the {what} has no visible artwork to compare")
     x0, y0, x1, y1 = box
     crop = Image.fromarray(a[y0:y1, x0:x1].astype(np.uint8), "RGBA")
     s = long_edge / max(crop.size)
@@ -138,8 +138,8 @@ def fidelity(result, source, long_edge: int = 1024) -> dict:
                        at the artwork before accepting a low one.
     score              0.4 * alpha_iou + 0.3 * colour_similarity + 0.3 * min(detail_ratio, 1)
     """
-    s = _prepare(source, long_edge)
-    r = _prepare(result, long_edge)
+    s = _prepare(source, long_edge, "source")
+    r = _prepare(result, long_edge, "result")
     h, w = min(s.shape[0], r.shape[0]), min(s.shape[1], r.shape[1])
     s, r = s[:h, :w], r[:h, :w]
     sa, ra = s[..., 3] > 128, r[..., 3] > 128

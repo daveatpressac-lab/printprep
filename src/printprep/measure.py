@@ -15,11 +15,14 @@ from ._img import luminance, to_rgb_array
 def region_luminance(image, box) -> float:
     """Median luminance of the (x0, y0, x1, y1) box."""
     a = to_rgb_array(image)
+    h, w = a.shape[:2]
     x0, y0, x1, y1 = box
-    region = a[y0:y1, x0:x1]
-    if not region.size:
-        raise ValueError(f"empty region {box}")
-    return float(np.median(luminance(region)))
+    if x1 <= x0 or y1 <= y0:
+        raise ValueError(f"region {tuple(box)} has no area; it wants (x0, y0, x1, y1) with "
+                         f"x1 > x0 and y1 > y0")
+    if x0 < 0 or y0 < 0 or x1 > w or y1 > h:
+        raise ValueError(f"region {tuple(box)} falls outside the {w}x{h} image")
+    return float(np.median(luminance(a[y0:y1, x0:x1])))
 
 
 def midpoint_threshold(image, subject_boxes, background_boxes) -> dict:

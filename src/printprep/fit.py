@@ -32,6 +32,12 @@ def fit_to_canvas(image, canvas=DEFAULT_CANVAS, margin: float = 0.94,
 
     `margin` keeps the artwork off the very edge of the print area.
     """
+    cw, ch = canvas
+    if cw < 1 or ch < 1:
+        raise ValueError(f"the canvas must be at least 1x1 pixels, not {cw}x{ch}")
+    if not 0 < margin <= 1:
+        raise ValueError(f"margin must be above 0 and at most 1, not {margin}. Above 1 scales the "
+                         f"artwork past the canvas, and the overhang is silently cut off.")
     rgba = to_rgba_array(image)
     if crop_to_art:
         box = alpha_bbox(rgba[..., 3], alpha_threshold)
@@ -40,7 +46,6 @@ def fit_to_canvas(image, canvas=DEFAULT_CANVAS, margin: float = 0.94,
         x0, y0, x1, y1 = box
         rgba = rgba[y0:y1, x0:x1]
     art = to_image(rgba)
-    cw, ch = canvas
     s = min(cw * margin / art.width, ch * margin / art.height)
     w, h = max(1, round(art.width * s)), max(1, round(art.height * s))
     placed = art.resize((w, h), Image.LANCZOS)
