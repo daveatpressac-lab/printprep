@@ -11,7 +11,7 @@ Nothing yet.
 ## [0.1.0] - 2026-09-21
 
 First release, extracted from a working print-on-demand design pipeline and re-implemented as a
-standalone package. Not published to PyPI.
+standalone package.
 
 ### Added
 

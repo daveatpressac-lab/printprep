@@ -1,0 +1,126 @@
+name: release
+
+# Pushing a v* tag publishes that version. Nothing here holds a token: PyPI and TestPyPI
+# authenticate this workflow by OIDC (trusted publishing), and the GitHub release is created
+# with the token Actions mints for the run. There is no secret to leak or rotate.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build and check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: The tag and the package version must agree
+        run: |
+          python - <<'PY'
+          import os, sys, tomllib
+          tag = os.environ["GITHUB_REF_NAME"]
+          with open("pyproject.toml", "rb") as fh:
+              version = tomllib.load(fh)["project"]["version"]
+          if tag != f"v{version}":
+              sys.exit(f"tag {tag} does not match pyproject version {version}")
+          print(f"{tag} matches pyproject version {version}")
+          PY
+
+      - name: Build
+        run: |
+          python -m pip install build twine
+          python -m build
+
+      - name: Validate metadata
+        run: python -m twine check --strict dist/*
+
+      - name: The wheel installs and its command line runs
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/python -m pip install dist/*.whl
+          /tmp/wheel-env/bin/printprep --version
+
+      - name: The sdist carries a test suite that actually runs
+        run: |
+          mkdir -p /tmp/sdist && tar -xzf dist/*.tar.gz -C /tmp/sdist --strip-components=1
+          cd /tmp/sdist && /tmp/wheel-env/bin/python -m unittest discover -s tests
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  testpypi:
+    name: publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write          # the OIDC token trusted publishing uses; no API key involved
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: publish to PyPI
+    needs: testpypi            # TestPyPI has to accept it first
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub release
+    needs: build               # deliberately not gated on PyPI: a failed upload can be retried
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Take the release notes from the changelog
+        run: |
+          python - <<'PY'
+          import os, re, sys
+          version = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          match = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## |\Z)",
+                            text, re.S | re.M)
+          if not match:
+              sys.exit(f"no section for {version} in CHANGELOG.md")
+          notes = match.group(1)
+          # Drop the link-reference definitions that live at the foot of the changelog.
+          notes = re.sub(r"^\[[^\]]+\]:\s*\S+\s*$", "", notes, flags=re.M)
+          open("RELEASE_NOTES.md", "w", encoding="utf-8").write(notes.strip() + "\n")
+          PY
+
+      - name: Create it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file RELEASE_NOTES.md \
+            --verify-tag
