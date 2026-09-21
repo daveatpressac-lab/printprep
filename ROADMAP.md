@@ -37,8 +37,9 @@ request.
 - Property-based tests over image shape, bit depth and ground colour, to replace some of the
   hand-picked cases.
 - Coverage measured and reported, rather than assumed from the test count.
-- A PyPI release, so `pip install printprep` works. See [CHANGELOG.md](CHANGELOG.md) for where
-  that stands.
+- A CI job that installs the *declared minimum* dependency versions rather than whatever pip
+  resolves. `numpy>=1.22` and `scipy>=1.8` are currently floors nothing actually tests, so the
+  real lower bound is unknown.
 
 ## Once there are outside users
 

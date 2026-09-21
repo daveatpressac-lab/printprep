@@ -4,6 +4,7 @@ Prepare finished artwork for garment printing: cut it off its background without
 fit it to the print canvas without distortion, and measure the result instead of eyeballing it.
 
 [![tests](https://github.com/daveatpressac-lab/printprep/actions/workflows/tests.yml/badge.svg)](https://github.com/daveatpressac-lab/printprep/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/printprep.svg)](https://pypi.org/project/printprep/)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 
@@ -50,11 +51,14 @@ artwork usually does.
 ## Install
 
 ```bash
-pip install git+https://github.com/daveatpressac-lab/printprep
+pip install printprep
 ```
 
 Python 3.9 or newer, with numpy, scipy, OpenCV (headless) and Pillow. No network access, no models.
-Not on PyPI yet - see [Status](#status).
+
+Releases are built and uploaded by GitHub Actions rather than from anyone's laptop, and both files
+carry [PEP 740 provenance attestations](https://pypi.org/project/printprep/#files) tying them to
+the workflow run that produced them.
 
 ## Quick start
 
@@ -195,8 +199,8 @@ Early, and honest about it. The rules here come from preparing real artwork for 
 print-on-demand pipeline, where each one was added after a specific failure reached, or nearly
 reached, a garment proof. This package is a clean re-implementation of those rules for general use.
 
-As a standalone project it is new: version 0.1.0, not yet released on PyPI, and no outside users
-that I know of. The API may still change before 1.0.
+As a standalone project it is new: 0.1.0 is its first release, and it has no outside users that I
+know of. The API may still change before 1.0.
 
 What is tested: 88 unit tests on synthetic artwork drawn in code, run on Linux, Windows and macOS
 against Python 3.9, 3.12 and 3.13. They cover holes, halos, grain specks, internal seams, ragged
