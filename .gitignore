@@ -5,4 +5,14 @@ build/
 dist/
 .venv/
 venv/
+env/
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

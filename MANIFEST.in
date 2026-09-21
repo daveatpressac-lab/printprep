@@ -1,0 +1,6 @@
+# The sdist shipped the test modules but not synth.py, so its test suite could not be run.
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+recursive-include tests *.py
+recursive-include examples *.py

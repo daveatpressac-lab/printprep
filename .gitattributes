@@ -1,0 +1,4 @@
+# One line ending everywhere. CI runs on Linux, Windows and macOS, and a checkout that flips
+# between them otherwise shows every file as modified.
+* text=auto eol=lf
+*.png binary
