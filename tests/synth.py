@@ -99,3 +99,13 @@ def tonal_photo(size=(300, 300), seed=5):
     base += rng.normal(0, 22, base.shape)
     a = np.clip(np.stack([base, base * 0.95, base * 0.9], -1), 0, 255).astype(np.uint8)
     return Image.fromarray(a, "RGB")
+
+
+def as_16bit_grey(image):
+    """The same artwork as a 16-bit greyscale PIL image (mode I;16), as a scan or TIFF arrives.
+
+    Pillow's own `convert("RGB")` saturates this to a blank white page, which is exactly the
+    silent failure `_img` exists to prevent.
+    """
+    grey = np.asarray(image.convert("L")).astype(np.uint16) * 257
+    return Image.fromarray(grey)
