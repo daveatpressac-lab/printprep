@@ -53,7 +53,7 @@ def _check_destination(dest) -> None:
     p = Path(dest)
     if p.suffix.lower() not in ALPHA_FORMATS:
         raise ValueError(
-            f"{p.name or dest!r} cannot hold transparency, so the cut would be thrown away on "
+            f"{p.name or dest} cannot hold transparency, so the cut would be thrown away on "
             f"save. Use one of {', '.join(ALPHA_FORMATS)} - PNG is the usual choice for a print "
             f"master.")
     if p.parent and not p.parent.exists():
