@@ -3,7 +3,11 @@
 Prepare finished artwork for garment printing: cut it off its background without halos or holes,
 fit it to the print canvas without distortion, and measure the result instead of eyeballing it.
 
-![Three ways to cut artwork off cream paper, shown on a dark garment](docs/halo_comparison.png)
+[![tests](https://github.com/daveatpressac-lab/printprep/actions/workflows/tests.yml/badge.svg)](https://github.com/daveatpressac-lab/printprep/actions/workflows/tests.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+
+![Three ways to cut artwork off cream paper, shown on a dark garment](https://raw.githubusercontent.com/daveatpressac-lab/printprep/main/docs/halo_comparison.png)
 
 *Left: a colour key deletes the eyes, because they are the same cream as the paper. Middle: a
 blurred mask keeps them but rings every shape in pale paper colour. Right: printprep. Reproduce it
@@ -32,13 +36,25 @@ printprep is a small library and command line built around one rule for each of 
 | Blurred connectivity mask | yes | **L78.6**, a visible pale fringe |
 | `printprep.key_ground` | yes | **L52.3**, the edge takes on the ink |
 
+## Who it is for
+
+Anyone with a folder of finished artwork and a print service at the other end: print-on-demand
+sellers, small garment shops, and the scripts that sit between a design tool and a Printify,
+Printful or DTG queue. It is a library and a command line, not an application - it expects to be
+called from your own pipeline, and it prints measurements rather than opinions.
+
+It is **not** a background-removal model. There is no network call and no neural net; it works on
+artwork that sits on a plain, roughly uniform ground, which is what generated and scanned design
+artwork usually does.
+
 ## Install
 
 ```bash
 pip install git+https://github.com/daveatpressac-lab/printprep
 ```
 
-Python 3.9+, with numpy, scipy, OpenCV (headless) and Pillow. No network access, no models.
+Python 3.9 or newer, with numpy, scipy, OpenCV (headless) and Pillow. No network access, no models.
+Not on PyPI yet - see [Status](#status).
 
 ## Quick start
 
@@ -53,7 +69,7 @@ print(cut.stats)                         # ground colour, % transparent, enclose
 print(halo(cut.image))                   # edge ring vs a dark garment - lower is cleaner
 
 master = fit_to_canvas(cut.image)        # 4500 x 5400, one scale, centred, 0.94 margin
-print(master.aspect_drift)               # 0.0 means nothing was stretched
+print(master.aspect_drift)               # fraction stretched; 0.0 means not at all
 save_master(master.image, "master.png")  # RGBA, 300 dpi
 
 report = check_master(master.image)
@@ -70,12 +86,24 @@ printprep fit   cut.png master.png --canvas 4500x5400
 printprep qc    master.png                    # exit code 1 if it fails
 ```
 
+Every command prints its measurements as JSON on stdout, so `printprep qc master.png | jq .problems`
+works. Anything you need to notice goes to stderr instead, where it cannot corrupt that JSON.
+Exit codes are `0` done, `1` a `qc` master failed its gates, and `2` the command could not be
+carried out - with the reason, not a traceback:
+
+```console
+$ printprep key drawing_on_paper.png master.jpg
+printprep: master.jpg cannot hold transparency, so the cut would be thrown away on save.
+Use one of .png, .tga, .tif, .tiff, .webp - PNG is the usual choice for a print master.
+```
+
 ## What each part does
 
 ### `key_ground` - cut by connectivity, soften by measured coverage
 
 Only background **reachable from the image border** is removed, so background colour enclosed by the
-artwork stays as ink.
+artwork stays as ink. Ground that a hairline gap connects to the outside does drain out, because
+that is background too.
 
 The edge is where the care goes. An anti-aliased edge pixel's ink coverage is its distance from the
 background colour *as a fraction of its own ink's distance*, and one design can hold inks at very
@@ -97,7 +125,9 @@ corner is missing from the mask, a hull bridges across and shears it off.
 ### `fit_to_canvas` - one scale factor, always
 
 Crops to the visible artwork, scales once by whichever axis runs out of room first, centres it, and
-reports `aspect_drift` so a test can pin it at zero.
+reports `aspect_drift` so a test can pin it near zero. That drift is the **fractional** change in
+the aspect ratio, so `< 0.005` means under half a per cent whatever shape the artwork is; rounding
+the placed size to whole pixels is the only thing that moves it off zero.
 
 ### `check_master` - gates, measured on alpha
 
@@ -143,36 +173,71 @@ look.
 - `midpoint_threshold` puts a luminance threshold between measured subject and background regions,
   and refuses outright when they overlap.
 
+## What it refuses
+
+A wrong answer that looks right costs more than an error, so several inputs are turned away rather
+than processed into a plausible bad print file:
+
+- artwork that is **already cut out**, handed back to `key_ground` - the colour under a transparent
+  pixel is undefined, so keying it again measures paint that was never printed
+- a `margin` above 1, which used to scale artwork past the canvas and shear off the overhang
+- a destination that cannot hold transparency, checked *before* the work is done
+- subject and background luminance ranges that overlap, in `midpoint_threshold`
+- an integer array whose values run past 255 and whose range printprep cannot know
+
+16-bit greyscale scans are rescaled on the way in rather than refused. Pillow's own
+`convert("RGB")` saturates those to a blank white page, which is exactly the kind of silent failure
+this library exists to catch.
+
 ## Status
 
-Early and honest about it. The rules here come from preparing real artwork for a working
+Early, and honest about it. The rules here come from preparing real artwork for a working
 print-on-demand pipeline, where each one was added after a specific failure reached, or nearly
 reached, a garment proof. This package is a clean re-implementation of those rules for general use.
-As a standalone project it is new: version 0.1.0, no releases on PyPI yet, and no outside users that
-I know of.
 
-What is tested: 34 unit tests on synthetic artwork drawn in code, covering holes, halos, grain
-specks, internal seams, ragged tilted panels, stretching, clipping, plate exceptions and the
-enlargement advice.
+As a standalone project it is new: version 0.1.0, not yet released on PyPI, and no outside users
+that I know of. The API may still change before 1.0.
+
+What is tested: 88 unit tests on synthetic artwork drawn in code, run on Linux, Windows and macOS
+against Python 3.9, 3.12 and 3.13. They cover holes, halos, grain specks, internal seams, ragged
+tilted panels, stretching, clipping, plate exceptions, the enlargement advice, high-bit-depth
+sources, extreme image shapes, every refusal above, and the command line end to end.
 
 Known limits:
 
 - `key_ground` expects a plain, roughly uniform background. For busy or shadowed backgrounds, build a
   mask yourself and use `cut_plate(..., mask=...)`.
+- **Pale ink on pale paper still fringes.** When the ink is close to the ground colour there is
+  little to measure coverage against. On the test case it leaves a 1px ring around L103 on an L59
+  garment - better than the blurred mask's L145, but not clean. Pinned by a test, so the limit is
+  measured rather than assumed.
 - Tracing itself is not included; `choose_enlargement` advises, and `fidelity` checks whatever tracer
   you use.
-- Thresholds are in 8-bit RGB distance. Wide-gamut and 16-bit sources are converted on the way in.
+- Thresholds are in 8-bit RGB distance. High-bit-depth sources are converted on the way in.
+- `cut_plate` renders its mask at 4x to anti-alias the edge, so a full-size 4500 x 5400 plate needs
+  roughly 400 MB of memory for that step.
 
 ## Development
 
 ```bash
-pip install -e .
+git clone https://github.com/daveatpressac-lab/printprep
+cd printprep
+python -m venv .venv
+pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 python examples/halo_demo.py
 ```
 
-Issues and pull requests are welcome. A failing case with a small synthetic image, or a description
-of the artwork that broke it, is the most useful report.
+`examples/halo_demo.py` regenerates `docs/halo_comparison.png` and prints the numbers in the table
+above. The artwork is drawn in code, so the figure is reproducible on any machine.
+
+## Reporting a problem, and contributing
+
+Open an [issue](https://github.com/daveatpressac-lab/printprep/issues). The most useful report is a
+small synthetic image that reproduces the failure, or a description of the artwork that broke it:
+the ground colour, roughly what the design is, and what came out. Pull requests are welcome - see
+[CONTRIBUTING.md](CONTRIBUTING.md) for how the tests are laid out, and [ROADMAP.md](ROADMAP.md) for
+what is likely next. Security reports go via [SECURITY.md](SECURITY.md).
 
 ## Licence
 
